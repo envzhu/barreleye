@@ -3742,11 +3742,11 @@ def get_or_add_host_to_dict(log, host_dict, hostname, ssh_key, ssh_port,
     else:
         host = host_dict[hostname]
         if host.sh_identity_file != ssh_key:
-            log.cl_error("host [%s] was configured to use ssh key [%s], now [%s]",
+            log.cl_error("host [%s] was configured to use ssh key [%s], not [%s]",
                          hostname, host.sh_identity_file, ssh_key)
             return None
         if host.sh_port != ssh_port:
-            log.cl_error("host [%s] was configured to use ssh port [%s], now [%s]",
+            log.cl_error("host [%s] was configured to use ssh port [%s], not [%s]",
                          hostname, host.sh_port, ssh_port)
             return None
     return host
