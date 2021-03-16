@@ -95,7 +95,7 @@ def scp_remote_escape(filename):
     return sh_escape("".join(new_name))
 
 
-def make_ssh_command(login_name="root", identity_file=None):
+def make_ssh_command(login_name="root", identity_file=None, port=22):
     """
     Return the ssh cmd string
     """
@@ -103,17 +103,18 @@ def make_ssh_command(login_name="root", identity_file=None):
     if identity_file is not None:
         extra_option = ("-i %s" % identity_file)
     full_command = ("ssh -a -x -l %s -o StrictHostKeyChecking=no "
-                    "-o BatchMode=yes %s" %
-                    (login_name, extra_option))
+                    "-o BatchMode=yes -p %d %s" %
+                    (login_name, port, extra_option))
     return full_command
 
 
-def ssh_command(hostname, command, login_name="root", identity_file=None):
+def ssh_command(hostname, command, login_name="root", identity_file=None,
+                port=22):
     """
     Return the ssh command on a remote host
     """
     ssh_string = make_ssh_command(login_name=login_name,
-                                  identity_file=identity_file)
+                                  identity_file=identity_file, port=port)
     full_command = ("%s %s \"LANG=en_US %s\"" %
                     (ssh_string, hostname, sh_escape(command)))
     return full_command
@@ -122,7 +123,7 @@ def ssh_command(hostname, command, login_name="root", identity_file=None):
 def ssh_run(hostname, command, login_name="root", timeout=None,
             stdout_tee=None, stderr_tee=None, stdin=None,
             return_stdout=True, return_stderr=True,
-            quit_func=None, identity_file=None, flush_tee=False):
+            quit_func=None, identity_file=None, port=22, flush_tee=False):
     """
     Use ssh to run command on a remote host
     """
@@ -131,7 +132,7 @@ def ssh_run(hostname, command, login_name="root", timeout=None,
         stderr = "type of command argument is not a basestring"
         return utils.CommandResult(stderr=stderr, exit_status=-1)
 
-    full_command = ssh_command(hostname, command, login_name, identity_file)
+    full_command = ssh_command(hostname, command, login_name, identity_file, port)
     return utils.run(full_command, timeout=timeout, stdout_tee=stdout_tee,
                      stderr_tee=stderr_tee, stdin=stdin,
                      return_stdout=return_stdout, return_stderr=return_stderr,
@@ -143,7 +144,7 @@ class SSHHost(object):
     Each SSH host has an object of SSHHost
     """
     # pylint: disable=too-many-public-methods,too-many-instance-attributes
-    def __init__(self, hostname, identity_file=None, local=False,
+    def __init__(self, hostname, identity_file=None, port=22, local=False,
                  ssh_for_local=True):
         # The host has been checked to be local or not
         self.sh_cached_is_local = None
@@ -153,6 +154,7 @@ class SSHHost(object):
             self.sh_host_desc = hostname
         self.sh_hostname = hostname
         self.sh_identity_file = identity_file
+        self.sh_port = port
         # If the host is inited as local, then it is local for sure
         self.sh_inited_as_local = local
         self.sh_cached_distro = None
@@ -710,7 +712,8 @@ class SSHHost(object):
         pre-encoded.
         """
         # pylint: disable=no-self-use
-        ssh_cmd = make_ssh_command(identity_file=self.sh_identity_file)
+        ssh_cmd = make_ssh_command(identity_file=self.sh_identity_file,
+                                   port=self.sh_port)
         if delete_dest:
             delete_flag = "--delete"
         else:
@@ -917,6 +920,7 @@ class SSHHost(object):
                           stdin=stdin, return_stdout=return_stdout,
                           return_stderr=return_stderr, quit_func=quit_func,
                           identity_file=self.sh_identity_file,
+                          port=self.sh_port,
                           flush_tee=flush_tee)
         if not silent:
             log.cl_debug("ran [%s] on host [%s], ret = [%d], stdout = [%s], "
@@ -3725,20 +3729,24 @@ def write_ssh_key(log, workspace, local_host, hostname, content):
     return fpath
 
 
-def get_or_add_host_to_dict(log, host_dict, hostname, ssh_key,
+def get_or_add_host_to_dict(log, host_dict, hostname, ssh_key, ssh_port,
                             host_type=SSHHost):
     """
-    If the hostname exists in the dict, check that the key is the same.
+    If the hostname exists in the dict, check that the key and port are the same.
     If the hostname does not exist in the dict, create and add the host to
     the dict.
     """
     if hostname not in host_dict:
-        host = host_type(hostname, identity_file=ssh_key)
+        host = host_type(hostname, identity_file=ssh_key, port=ssh_port)
         host_dict[hostname] = host
     else:
         host = host_dict[hostname]
         if host.sh_identity_file != ssh_key:
             log.cl_error("host [%s] was configured to use ssh key [%s], now [%s]",
                          hostname, host.sh_identity_file, ssh_key)
+            return None
+        if host.sh_port != ssh_port:
+            log.cl_error("host [%s] was configured to use ssh port [%s], now [%s]",
+                         hostname, host.sh_port, ssh_port)
             return None
     return host

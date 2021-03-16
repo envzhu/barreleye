@@ -22,6 +22,8 @@ BARRELE_CONTINUOUS_QUERY_PERIODS = 4
 BARRELE_LUSTRE_FALLBACK_VERSION = lustre.LUSTRE_VERSION_NAME_2_12
 # Default dir of Barreleye data
 BARRELE_DATA_DIR = "/var/log/coral/barreleye_data"
+# Default ssh port
+BARRELE_SSH_PORT = 22
 
 
 class BarreleInstance(object):
@@ -260,8 +262,15 @@ def parse_server_config(log, config, config_fpath, host_dict):
     ssh_identity_file = utils.config_value(server_config,
                                            barrele_constant.BRL_SSH_IDENTITY_FILE)
 
+    ssh_port = utils.config_value(server_config,
+                                  barrele_constant.BRL_SSH_PORT)
+    if ssh_port is None:
+        log.cl_debug("no [%s] configured, using default value [%s]",
+                     barrele_constant.BRL_SSH_PORT, BARRELE_SSH_PORT)
+        ssh_port = BARRELE_SSH_PORT
+
     host = ssh_host.get_or_add_host_to_dict(log, host_dict, hostname,
-                                            ssh_identity_file)
+                                            ssh_identity_file, ssh_port)
     if host is None:
         return None
     return barrele_server.BarreleServer(host, data_path)
@@ -376,6 +385,13 @@ def barrele_init_instance(log, workspace, config, config_fpath, log_to_file,
         ssh_identity_file = utils.config_value(agent_config,
                                                barrele_constant.BRL_SSH_IDENTITY_FILE)
 
+        ssh_port = utils.config_value(agent_config,
+                                      barrele_constant.BRL_SSH_PORT)
+        if ssh_port is None:
+            log.cl_debug("no [%s] configured, using default value [%s]",
+                         barrele_constant.BRL_SSH_PORT, BARRELE_SSH_PORT)
+            ssh_port = BARRELE_SSH_PORT
+
         enable_disk = utils.config_value(agent_config,
                                          barrele_constant.BRL_ENABLE_DISK)
         if enable_disk is None:
@@ -428,7 +444,7 @@ def barrele_init_instance(log, workspace, config, config_fpath, log_to_file,
                 return None
             host = ssh_host.get_or_add_host_to_dict(log, host_dict,
                                                     hostname,
-                                                    ssh_identity_file)
+                                                    ssh_identity_file, ssh_port)
             if host is None:
                 return None
 

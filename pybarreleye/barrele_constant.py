@@ -50,6 +50,7 @@ BRL_JOBSTAT_PATTERN = "jobstat_pattern"
 BRL_LUSTRE_FALLBACK_VERSION = "lustre_fallback_version"
 BRL_SERVER = "server"
 BRL_SSH_IDENTITY_FILE = "ssh_identity_file"
+BRL_SSH_PORT = "ssh_port"
 
 GRAFANA_STATUS_PANEL = "Grafana_Status_panel"
 GRAFANA_PIECHART_PANEL = "grafana-piechart-panel"
